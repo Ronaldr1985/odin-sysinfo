@@ -54,43 +54,21 @@ read_entire_file_from_handle :: proc(fd: os.Handle, allocator := context.allocat
     return _data[:bytes_total], true
 }
 
-array_from_string :: proc(str: string, delimiter: rune) -> ([dynamic]string, bool) {
-	arr: [dynamic]string
-	index_of_previous_delimiter: int = -1
+before :: proc(str, substr: string, index: int) -> (output: string, ok: bool) {
+	pos: int = 0
+	test_str := str
 
-	for char, i in str {
-		if char == delimiter {
-			if rune(str[i-1]) != delimiter {
-				// fmt.println("Inbetween delimiters: ", str[index_of_previous_delimiter:i-1])
-				append(&arr, str[index_of_previous_delimiter+1:i])
-			}
-			index_of_previous_delimiter = i
-		}
-		if i == len(str)-1 {
-			append(&arr, str[index_of_previous_delimiter+1:i])
-		}
-	}
-	return arr, true
-}
-
-before :: proc(str: string, substr: string) -> (string, bool) {
-	pos := strings.index(str, substr)
-	if pos == -1 { 
+	if strings.count(str, substr) < index {
 		return "", false
 	}
-	return str[0:pos], true
-}
 
-after :: proc(str: string, substr: string) -> (string, bool) {
-	pos := strings.last_index(str, substr)
-	if pos == -1 { 
-		return "", false
+	for counter := 0; counter < index; counter += 1 {
+		pos = strings.index(test_str, substr)
+		test_str, _ = strings.remove(str, substr, counter)
 	}
-	adjustedPos := pos + len(substr)
-	if adjustedPos >= len(str) {
-		return "", false
-	}
-	return str[adjustedPos:], true
+	fmt.printf("Test: \"%s\"\n", test_str[:pos])
+
+	return str[:pos+1], true
 }
 
 get_key :: proc(s: string) -> (res: string, ok: bool) {
@@ -139,7 +117,6 @@ get_ram_usage_perc :: proc() -> (f64, bool) {
 	meminfo_bytes: []byte
 	ok: bool
 
-
 	if meminfo_bytes, ok = read_entire_file_from_filename("/proc/meminfo"); !ok {
 		fmt.fprintln(os.stderr, "Failed to open file, meminfo")
 		os.exit(1)
@@ -172,16 +149,26 @@ write_version :: proc() {
 main :: proc() {
 	mem_usage_perc: f64
 	ok: bool
+	str2: string
+	str := "Test\nPrint this\nRemove"
 
-	for {
-		if mem_usage_perc, ok = get_ram_usage_perc(); !ok {
-			fmt.fprintln(os.stderr, "Failed to read memory usage")
-		}
-		time.accurate_sleep(1000000000)
-		fmt.printf("mem perc: %.1f%%\n", mem_usage_perc)
+	str2, ok = before(str, "\n", 2)
 
-		time.accurate_sleep(1000000000)
-
+	if ok {
+		fmt.println("\nAfter function")
+		fmt.printf("\"%s\"\n", str2)
 	}
+
+
+	// for {
+	// 	if mem_usage_perc, ok = get_ram_usage_perc(); !ok {
+	// 		fmt.fprintln(os.stderr, "Failed to read memory usage")
+	// 	}
+	// 	time.accurate_sleep(1000000000)
+	// 	fmt.printf("mem perc: %.1f%%\n", mem_usage_perc)
+
+	// 	time.accurate_sleep(1000000000)
+
+	// }
 }
 
