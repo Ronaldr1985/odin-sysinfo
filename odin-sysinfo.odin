@@ -9,8 +9,7 @@ import "core:strings"
 import "core:time"
 import "core:unicode"
 
-
-read_entire_file_from_filename :: proc(name: string, allocator := context.allocator) -> (data: []byte, success: bool) {
+read_entire_file_from_filename :: proc(name: string, allocator := context.allocator) -> ([]byte, bool) {
     context.allocator = allocator
 
     fd, err := os.open(name, os.O_RDONLY, 0)
@@ -22,7 +21,7 @@ read_entire_file_from_filename :: proc(name: string, allocator := context.alloca
     return read_entire_file_from_handle(fd, allocator)
 }
 
-read_entire_file_from_handle :: proc(fd: os.Handle, allocator := context.allocator) -> (data: []byte, success: bool) {
+read_entire_file_from_handle :: proc(fd: os.Handle, allocator := context.allocator) -> ([]byte, bool) {
     context.allocator = allocator
 
     length: i64
@@ -54,24 +53,7 @@ read_entire_file_from_handle :: proc(fd: os.Handle, allocator := context.allocat
     return _data[:bytes_total], true
 }
 
-before :: proc(str, substr: string, index: int) -> (output: string, ok: bool) {
-	pos: int = 0
-	test_str := str
-
-	if strings.count(str, substr) < index {
-		return "", false
-	}
-
-	for counter := 0; counter < index; counter += 1 {
-		pos = strings.index(test_str, substr)
-		test_str, _ = strings.remove(str, substr, counter)
-	}
-	fmt.printf("Test: \"%s\"\n", test_str[:pos])
-
-	return str[:pos+1], true
-}
-
-get_key :: proc(s: string) -> (res: string, ok: bool) {
+get_key :: proc(s: string) -> (string, bool) {
     if len(s) > 1 && s[len(s) - 1] == ':' {
         // Yes, this ends in a colon and is a key
         return s[:len(s) - 1], true
@@ -79,7 +61,7 @@ get_key :: proc(s: string) -> (res: string, ok: bool) {
     return s, false
 }
 
-parse_meminfo :: proc(meminfo: string) -> (meminfo_map: map[string]f64, ok: bool) {
+parse_meminfo :: proc(meminfo: string) -> (map[string]f64, bool) {
     s := strings.fields(meminfo)
 	orig := s
 	defer delete(orig)
@@ -140,35 +122,59 @@ get_ram_usage_perc :: proc() -> (f64, bool) {
 	return 100 * (((total - free) - (buffers + cached)) / total), true
 }
 
-write_version :: proc() {
-	fmt.printf("dof 0.1\nLicense BSD-2-Clause\n\nWritten by Ronald 1985.\n")
+parse_cpuinfo :: proc(cpuinfo: string) -> (map[string]string, bool) {
+	cpuinfo_string: string = cpuinfo
+    values: map[string]string
+	key, value: string
 
-    os.exit(0)
+	for line in strings.split_lines_iterator(&cpuinfo_string) {
+		key, _, value = strings.partition(line, ":")
+        values[strings.trim_space(key)] = strings.trim_space(value)
+	}
+
+	return values, true
+}
+
+get_cpu_name :: proc() -> (string, bool) {
+	cpuinfo_bytes: []byte
+	ok: bool
+
+	if cpuinfo_bytes, ok = read_entire_file_from_filename("/proc/cpuinfo"); !ok {
+		fmt.fprintln(os.stderr, "Failed to open file, meminfo")
+		os.exit(1)
+	}
+	defer delete(cpuinfo_bytes)
+
+	cpuinfo_map, parse_cpuinfo_ok := parse_cpuinfo(string(cpuinfo_bytes))
+	if !parse_cpuinfo_ok {
+		fmt.fprintln(os.stderr, "Issue whilst parsing data from meminfo")
+		os.exit(1)
+	}
+	defer delete(cpuinfo_map)
+
+	return cpuinfo_map["model name"], true
 }
 
 main :: proc() {
+	cpu_name: string
 	mem_usage_perc: f64
 	ok: bool
-	str2: string
-	str := "Test\nPrint this\nRemove"
 
-	str2, ok = before(str, "\n", 2)
-
-	if ok {
-		fmt.println("\nAfter function")
-		fmt.printf("\"%s\"\n", str2)
+	if cpu_name, ok = get_cpu_name(); !ok {
+		fmt.fprintln(os.stderr, "Failed to get CPU name")
+	} else {
+		fmt.println("CPU Name: ", cpu_name)
 	}
 
+	for {
+		if mem_usage_perc, ok = get_ram_usage_perc(); !ok {
+			fmt.fprintln(os.stderr, "Failed to read memory usage")
+		}
+		time.accurate_sleep(1000000000)
+		fmt.printf("mem perc: %.1f%%\n", mem_usage_perc)
 
-	// for {
-	// 	if mem_usage_perc, ok = get_ram_usage_perc(); !ok {
-	// 		fmt.fprintln(os.stderr, "Failed to read memory usage")
-	// 	}
-	// 	time.accurate_sleep(1000000000)
-	// 	fmt.printf("mem perc: %.1f%%\n", mem_usage_perc)
+		time.accurate_sleep(1000000000)
 
-	// 	time.accurate_sleep(1000000000)
-
-	// }
+	}
 }
 
