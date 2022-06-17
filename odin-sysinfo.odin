@@ -9,6 +9,11 @@ import "core:strings"
 import "core:time"
 import "core:unicode"
 
+foreign import libc "system:c"
+foreign libc {
+	sysctl :: proc(name: []i32, namelen: u32, oldp: rawptr, oldplen: ^u32, newp: rawptr, newlen: u32) -> i32 ---
+}
+
 read_entire_file_from_filename :: proc(name: string, allocator := context.allocator) -> ([]byte, bool) {
 	context.allocator = allocator
 
@@ -137,28 +142,40 @@ parse_cpuinfo :: proc(cpuinfo: string) -> (map[string]string, bool) {
 }
 
 get_cpu_name :: proc() -> (string, bool) {
-	cpuinfo_bytes: []byte
-	ok: bool
+	if ODIN_OS == .OpenBSD {
+		mib := []i32{6, 2}
+		mib_len : u32 = 2
+		newlen : u32 = 0
+		cpu_name : cstring
+		len : u32
 
-	if cpuinfo_bytes, ok = read_entire_file_from_filename("/proc/cpuinfo"); !ok {
-		fmt.fprintln(os.stderr, "Failed to open file, meminfo")
-		os.exit(1)
+		sysctl(mib, mib_len, &cpu_name, &len, nil, newlen)
+		fmt.println("Test: ", cpu_name)
+	} else if ODIN_OS == .Linux {
+		cpuinfo_bytes: []byte
+		ok: bool
+
+		if cpuinfo_bytes, ok = read_entire_file_from_filename("/proc/cpuinfo"); !ok {
+			fmt.fprintln(os.stderr, "Failed to open file, meminfo")
+			os.exit(1)
+		}
+		defer delete(cpuinfo_bytes)
+
+		cpuinfo_map, parse_cpuinfo_ok := parse_cpuinfo(string(cpuinfo_bytes))
+		if !parse_cpuinfo_ok {
+			fmt.fprintln(os.stderr, "Issue whilst parsing data from meminfo")
+			os.exit(1)
+		}
+		defer delete(cpuinfo_map)
+
+		return cpuinfo_map["model name"], true
 	}
-	defer delete(cpuinfo_bytes)
-
-	cpuinfo_map, parse_cpuinfo_ok := parse_cpuinfo(string(cpuinfo_bytes))
-	if !parse_cpuinfo_ok {
-		fmt.fprintln(os.stderr, "Issue whilst parsing data from meminfo")
-		os.exit(1)
-	}
-	defer delete(cpuinfo_map)
-
-	return cpuinfo_map["model name"], true
+	return "", false
 }
 
 main :: proc() {
 	cpu_name: string
-	mem_usage_perc: f64
+	// mem_usage_perc: f64
 	ok: bool
 
 	if cpu_name, ok = get_cpu_name(); !ok {
@@ -167,15 +184,15 @@ main :: proc() {
 		fmt.println("CPU Name: ", cpu_name)
 	}
 
-	for i := 1; i < 10; i += 1 {
-		if mem_usage_perc, ok = get_ram_usage_perc(); !ok {
-			fmt.fprintln(os.stderr, "Failed to read memory usage")
-		}
-		time.accurate_sleep(1000000000)
-		fmt.printf("mem perc: %.1f%%\n", mem_usage_perc)
+	// for i := 1; i < 10; i += 1 {
+	// 	if mem_usage_perc, ok = get_ram_usage_perc(); !ok {
+	// 		fmt.fprintln(os.stderr, "Failed to read memory usage")
+	// 	}
+	// 	time.accurate_sleep(1000000000)
+	// 	fmt.printf("mem perc: %.1f%%\n", mem_usage_perc)
 
-		time.accurate_sleep(1000000000)
+	// 	time.accurate_sleep(1000000000)
 
-	}
+	// }
 }
 
