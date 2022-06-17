@@ -8,10 +8,11 @@ import "core:strconv"
 import "core:strings"
 import "core:time"
 import "core:unicode"
+import "core:c"
 
 foreign import libc "system:c"
 foreign libc {
-	sysctl :: proc(name: []i32, namelen: u32, oldp: rawptr, oldplen: ^u32, newp: rawptr, newlen: u32) -> i32 ---
+	sysctl :: proc "c" (name: [^]c.int, namelen: c.uint, oldp: rawptr, oldplen: ^c.size_t, newp: rawptr, newlen: c.size_t) -> c.int ---
 }
 
 read_entire_file_from_filename :: proc(name: string, allocator := context.allocator) -> ([]byte, bool) {
@@ -143,14 +144,15 @@ parse_cpuinfo :: proc(cpuinfo: string) -> (map[string]string, bool) {
 
 get_cpu_name :: proc() -> (string, bool) {
 	if ODIN_OS == .OpenBSD {
-		mib := []i32{6, 2}
-		mib_len : u32 = 2
-		newlen : u32 = 0
+		mib := []c.int{6, 2}
+		mib_len : c.uint = 2
+		newlen : c.size_t = 0
 		cpu_name : cstring
-		len : u32
+		len : c.size_t
 
-		sysctl(mib, mib_len, &cpu_name, &len, nil, newlen)
-		fmt.println("Test: ", cpu_name)
+		err := sysctl(raw_data(mib), mib_len, &cpu_name, &len, nil, newlen)
+		fmt.println("sysctl return: ", err)
+		fmt.println("CPU_NAME: ", cpu_name)
 	} else if ODIN_OS == .Linux {
 		cpuinfo_bytes: []byte
 		ok: bool
