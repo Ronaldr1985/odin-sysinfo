@@ -130,7 +130,7 @@ get_ram_usage_perc :: proc() -> (f64, bool) {
 
 parse_cpuinfo :: proc(cpuinfo: string) -> (map[string]string, bool) {
 	cpuinfo_string: string = cpuinfo
-    values: map[string]string
+	values: map[string]string
 	key, value: string
 
 	for line in strings.split_lines_iterator(&cpuinfo_string) {
