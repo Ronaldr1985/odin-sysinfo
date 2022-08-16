@@ -1,4 +1,4 @@
-package main
+package sysinfo
 
 import "core:bufio"
 import "core:fmt"
@@ -61,7 +61,6 @@ get_key :: proc(s: string) -> (string, bool) {
 	return s, false
 }
 
-// TODO: Maybe look at re-writing this?
 parse_meminfo :: proc(meminfo: string) -> (map[string]f64, bool) {
 	s := strings.fields(meminfo)
 	orig := s
@@ -154,28 +153,5 @@ get_cpu_name :: proc() -> (string, bool) {
 	defer delete(cpuinfo_map)
 
 	return cpuinfo_map["model name"], true
-}
-
-main :: proc() {
-	cpu_name: string
-	mem_usage_perc: f64
-	ok: bool
-
-	if cpu_name, ok = get_cpu_name(); !ok {
-		fmt.fprintln(os.stderr, "Failed to get CPU name")
-	} else {
-		fmt.println("CPU Name: ", cpu_name)
-	}
-
-	for i := 1; i < 10; i += 1 {
-		if mem_usage_perc, ok = get_ram_usage_perc(); !ok {
-			fmt.fprintln(os.stderr, "Failed to read memory usage")
-		}
-		time.accurate_sleep(1000000000)
-		fmt.printf("mem perc: %.1f%%\n", mem_usage_perc)
-
-		time.accurate_sleep(1000000000)
-
-	}
 }
 
