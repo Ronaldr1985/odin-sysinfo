@@ -53,6 +53,12 @@ read_entire_file_from_handle :: proc(fd: os.Handle, allocator := context.allocat
 	return _data[:bytes_total], true
 }
 
+get_hostname :: proc() -> (string, bool) {
+	data, ok := read_entire_file_from_filename("/proc/sys/kernel/hostname")
+
+	return string(data), ok
+}
+
 get_key :: proc(s: string) -> (string, bool) {
 	if len(s) > 1 && s[len(s) - 1] == ':' {
 		// Yes, this ends in a colon and is a key
@@ -135,23 +141,90 @@ parse_cpuinfo :: proc(cpuinfo: string) -> (map[string]string, bool) {
 	return values, true
 }
 
+get_total_physical_memory_bytes :: proc() -> (total_physical_memory: f64, ok: bool) {
+	meminfo_bytes: []byte
+
+	if meminfo_bytes, ok = read_entire_file_from_filename("/proc/meminfo"); !ok {
+		fmt.fprintln(os.stderr, "Failed to open file, meminfo")
+		os.exit(1)
+	}
+	defer delete(meminfo_bytes)
+
+	meminfo_map, parse_meminfo_ok := parse_meminfo(string(meminfo_bytes))
+	if !parse_meminfo_ok {
+		fmt.fprintln(os.stderr, "Issue whilst parsing data from meminfo")
+		os.exit(1)
+	}
+	defer delete(meminfo_map)
+
+	total_physical_memory = meminfo_map["MemTotal"]
+
+	return
+}
+
 get_cpu_name :: proc() -> (string, bool) {
 	cpuinfo_bytes: []byte
 	ok: bool
 
 	if cpuinfo_bytes, ok = read_entire_file_from_filename("/proc/cpuinfo"); !ok {
-		fmt.fprintln(os.stderr, "Failed to open file, meminfo")
+		fmt.fprintln(os.stderr, "Failed to open file, cpuinfo")
 		os.exit(1)
 	}
 	defer delete(cpuinfo_bytes)
 
 	cpuinfo_map, parse_cpuinfo_ok := parse_cpuinfo(string(cpuinfo_bytes))
 	if !parse_cpuinfo_ok {
-		fmt.fprintln(os.stderr, "Issue whilst parsing data from meminfo")
+		fmt.fprintln(os.stderr, "Issue whilst parsing data from cpuinfo")
 		os.exit(1)
 	}
 	defer delete(cpuinfo_map)
 
 	return cpuinfo_map["model name"], true
+}
+
+get_numb_cpu_cores :: proc() -> (int, bool) {
+	data, ok := read_entire_file_from_filename("/proc/cpuinfo")
+	if !ok {
+		fmt.fprintln(os.stderr, "Failed to open file, cpuinfo")
+		os.exit(1)
+	}
+	defer delete(data)
+
+	cpuinfo_map, parse_cpuinfo_ok := parse_cpuinfo(string(data))
+	if !parse_cpuinfo_ok {
+		fmt.fprintln(os.stderr, "Issue whilst parsing data from cpuinfo")
+		os.exit(1)
+	}
+	defer delete(cpuinfo_map)
+
+	return strconv.parse_int(cpuinfo_map["cpu cores"])
+}
+
+get_cpu_usage_perc :: proc() -> (f64, bool) {
+	data, ok := read_entire_file_from_filename("/proc/stat")
+	if !ok {
+		fmt.fprintln(os.stderr, "Issue whilst passing /proc/stat")
+		return 0, false
+	}
+
+	a, b: [4]f64
+	i: int = 0
+	fields: []string
+	data_str := string(data)
+
+	for line in strings.split_lines_iterator(&data_str) {
+		fields = strings.fields(line)
+		if i < 4 {
+			a[i] = strconv.atof(fields[i])
+		} else if i >= 4 {
+			b[i-4] = strconv.atof(fields[i-4])
+		}
+		i+=1
+	}
+
+	fmt.println("a: ", a)
+	fmt.println("b: ", b)
+
+	return (100 * ((b[0]+b[1]+b[2]) - (a[0]+a[1]+a[2])) / ((b[0]+b[1]+b[2]+b[3]) - (a[0]+a[1]+a[2]+a[3]))), true
 }
 
