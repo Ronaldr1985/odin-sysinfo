@@ -228,3 +228,8 @@ get_cpu_usage_perc :: proc() -> (f64, bool) {
 	return (100 * ((b[0]+b[1]+b[2]) - (a[0]+a[1]+a[2])) / ((b[0]+b[1]+b[2]+b[3]) - (a[0]+a[1]+a[2]+a[3]))), true
 }
 
+get_mountpoint_total_gb(mountpoint: string) -> (total: f64, ok: bool) {
+
+
+	return
+}
