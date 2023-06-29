@@ -201,35 +201,55 @@ get_numb_cpu_cores :: proc() -> (int, bool) {
 }
 
 get_cpu_usage_perc :: proc() -> (f64, bool) {
+	a, b: [10]f64
+	i := 0
+	fields: []string
+
 	data, ok := read_entire_file_from_filename("/proc/stat")
 	if !ok {
 		fmt.fprintln(os.stderr, "Issue whilst passing /proc/stat")
 		return 0, false
 	}
 
-	a, b: [4]f64
-	i: int = 0
-	fields: []string
 	data_str := string(data)
 
-	for line in strings.split_lines_iterator(&data_str) {
-		fields = strings.fields(line)
-		if i < 4 {
-			a[i] = strconv.atof(fields[i])
-		} else if i >= 4 {
-			b[i-4] = strconv.atof(fields[i-4])
+	fields = strings.fields(data_str[:strings.index(data_str, "\n")])
+	for field in fields {
+		if !strings.contains(field, "cpu") {
+			a[i] = strconv.atof(field)
+			i += 1
 		}
-		i+=1
 	}
 
-	fmt.println("a: ", a)
-	fmt.println("b: ", b)
+	time.sleep(time.Second * 1)
+
+	i = 0
+	data, ok = read_entire_file_from_filename("/proc/stat")
+	if !ok {
+		fmt.fprintln(os.stderr, "Issue whilst passing /proc/stat")
+		return 0, false
+	}
+	data_str = string(data)
+
+	fields = strings.fields(data_str[:strings.index(data_str, "\n")])
+	for field in fields {
+		if !strings.contains(field, "cpu") {
+			b[i] = strconv.atof(field)
+			i += 1
+		}
+	}
 
 	return (100 * ((b[0]+b[1]+b[2]) - (a[0]+a[1]+a[2])) / ((b[0]+b[1]+b[2]+b[3]) - (a[0]+a[1]+a[2]+a[3]))), true
 }
 
-get_mountpoint_total_gb(mountpoint: string) -> (total: f64, ok: bool) {
+get_mountpoint_total_gb :: proc(mountpoint: string) {
+	mountpoint_statvfs: Sys_statvfs
 
+	mountpoint_cstr := strings.clone_to_cstring(mountpoint)
 
-	return
+	statvfs(mountpoint_cstr, &mountpoint_statvfs)
+
+	total := (f64(mountpoint_statvfs.f_blocks) * f64(mountpoint_statvfs.f_bsize)) / 1073741824
+
+	fmt.println(total)
 }
