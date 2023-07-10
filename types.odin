@@ -16,4 +16,6 @@ Sys_statvfs :: struct {
 	f_fsid:     c.ulong,
 	f_flag:     c.ulong,
 	f_namemax:  c.ulong,
+
+	__f_spare:  [6]c.int
 }

@@ -242,14 +242,43 @@ get_cpu_usage_perc :: proc() -> (f64, bool) {
 	return (100 * ((b[0]+b[1]+b[2]) - (a[0]+a[1]+a[2])) / ((b[0]+b[1]+b[2]+b[3]) - (a[0]+a[1]+a[2]+a[3]))), true
 }
 
-get_mountpoint_total_gb :: proc(mountpoint: string) {
+get_mountpoint_total_gb :: proc(mountpoint: string) -> f64 {
 	mountpoint_statvfs: Sys_statvfs
 
-	mountpoint_cstr := strings.clone_to_cstring(mountpoint)
+	mountpoint_cstr := strings.clone_to_cstring(mountpoint, context.temp_allocator)
+
+	err := statvfs(mountpoint_cstr, &mountpoint_statvfs)
+	if err != 0 {
+		return 0
+	}
+
+	return (f64(mountpoint_statvfs.f_blocks) * f64(mountpoint_statvfs.f_bsize)) / 1073741824
+}
+
+get_mountpoint_available_gb :: proc(mountpoint: string) -> f64 {
+	mountpoint_statvfs: Sys_statvfs
+
+	mountpoint_cstr := strings.clone_to_cstring(mountpoint, context.temp_allocator)
 
 	statvfs(mountpoint_cstr, &mountpoint_statvfs)
 
-	total := (f64(mountpoint_statvfs.f_blocks) * f64(mountpoint_statvfs.f_bsize)) / 1073741824
+	return (f64(mountpoint_statvfs.f_bfree) * f64(mountpoint_statvfs.f_bsize)) / 1073741824
+}
 
-	fmt.println(total)
+get_mountpoint_used_gb :: proc(mountpoint: string) -> f64 {
+	mountpoint_statvfs: Sys_statvfs
+
+	mountpoint_cstr := strings.clone_to_cstring(mountpoint, context.temp_allocator)
+
+	statvfs(mountpoint_cstr, &mountpoint_statvfs)
+
+	return (f64(mountpoint_statvfs.f_blocks) * f64(mountpoint_statvfs.f_bsize) - (f64(mountpoint_statvfs.f_bfree) * f64(mountpoint_statvfs.f_bsize))) / 1073741824
+}
+
+get_mountpoint_available_perc :: proc(mountpoint: string) -> f64 {
+	return (get_mountpoint_available_gb(mountpoint)/get_mountpoint_total_gb(mountpoint)) * 100
+}
+
+get_mountpoint_used_perc :: proc(mountpoint: string) -> f64 {
+	return (get_mountpoint_used_gb(mountpoint)/get_mountpoint_total_gb(mountpoint)) * 100
 }
