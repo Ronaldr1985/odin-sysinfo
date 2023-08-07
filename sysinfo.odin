@@ -9,7 +9,7 @@ import "core:strings"
 import "core:time"
 import "core:unicode"
 
-read_entire_file_from_filename :: proc(name: string, allocator := context.allocator) -> ([]byte, bool) {
+__read_entire_file_from_filename :: proc(name: string, allocator := context.allocator) -> ([]byte, bool) {
 	context.allocator = allocator
 
 	fd, err := os.open(name, os.O_RDONLY, 0)
@@ -18,10 +18,10 @@ read_entire_file_from_filename :: proc(name: string, allocator := context.alloca
 	}
 	defer os.close(fd)
 
-	return read_entire_file_from_handle(fd, allocator)
+	return __read_entire_file_from_handle(fd, allocator)
 }
 
-read_entire_file_from_handle :: proc(fd: os.Handle, allocator := context.allocator) -> ([]byte, bool) {
+__read_entire_file_from_handle :: proc(fd: os.Handle, allocator := context.allocator) -> ([]byte, bool) {
 	context.allocator = allocator
 
 	length: i64
@@ -54,7 +54,7 @@ read_entire_file_from_handle :: proc(fd: os.Handle, allocator := context.allocat
 }
 
 get_hostname :: proc() -> (string, bool) {
-	data, ok := read_entire_file_from_filename("/proc/sys/kernel/hostname")
+	data, ok := __read_entire_file_from_filename("/proc/sys/kernel/hostname")
 
 	return string(data), ok
 }
@@ -105,7 +105,7 @@ get_ram_usage_perc :: proc() -> (f64, bool) {
 	meminfo_bytes: []byte
 	ok: bool
 
-	if meminfo_bytes, ok = read_entire_file_from_filename("/proc/meminfo"); !ok {
+	if meminfo_bytes, ok = __read_entire_file_from_filename("/proc/meminfo"); !ok {
 		fmt.fprintln(os.stderr, "Failed to open file, meminfo")
 		os.exit(1)
 	}
@@ -144,7 +144,7 @@ parse_cpuinfo :: proc(cpuinfo: string) -> (map[string]string, bool) {
 get_total_physical_memory_bytes :: proc() -> (total_physical_memory: f64, ok: bool) {
 	meminfo_bytes: []byte
 
-	if meminfo_bytes, ok = read_entire_file_from_filename("/proc/meminfo"); !ok {
+	if meminfo_bytes, ok = __read_entire_file_from_filename("/proc/meminfo"); !ok {
 		fmt.fprintln(os.stderr, "Failed to open file, meminfo")
 		os.exit(1)
 	}
@@ -166,7 +166,7 @@ get_cpu_name :: proc() -> (string, bool) {
 	cpuinfo_bytes: []byte
 	ok: bool
 
-	if cpuinfo_bytes, ok = read_entire_file_from_filename("/proc/cpuinfo"); !ok {
+	if cpuinfo_bytes, ok = __read_entire_file_from_filename("/proc/cpuinfo"); !ok {
 		fmt.fprintln(os.stderr, "Failed to open file, cpuinfo")
 		os.exit(1)
 	}
@@ -183,7 +183,7 @@ get_cpu_name :: proc() -> (string, bool) {
 }
 
 get_numb_cpu_cores :: proc() -> (int, bool) {
-	data, ok := read_entire_file_from_filename("/proc/cpuinfo")
+	data, ok := __read_entire_file_from_filename("/proc/cpuinfo")
 	if !ok {
 		fmt.fprintln(os.stderr, "Failed to open file, cpuinfo")
 		os.exit(1)
@@ -205,7 +205,7 @@ get_cpu_usage_perc :: proc() -> (f64, bool) {
 	i := 0
 	fields: []string
 
-	data, ok := read_entire_file_from_filename("/proc/stat")
+	data, ok := __read_entire_file_from_filename("/proc/stat")
 	if !ok {
 		fmt.fprintln(os.stderr, "Issue whilst passing /proc/stat")
 		return 0, false
@@ -224,7 +224,7 @@ get_cpu_usage_perc :: proc() -> (f64, bool) {
 	time.sleep(time.Second * 1)
 
 	i = 0
-	data, ok = read_entire_file_from_filename("/proc/stat")
+	data, ok = __read_entire_file_from_filename("/proc/stat")
 	if !ok {
 		fmt.fprintln(os.stderr, "Issue whilst passing /proc/stat")
 		return 0, false
