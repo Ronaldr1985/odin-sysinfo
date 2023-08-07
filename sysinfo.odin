@@ -62,7 +62,7 @@ get_hostname :: proc() -> (string, bool) {
 	return hostname, ok
 }
 
-get_key :: proc(s: string) -> (string, bool) {
+__get_key :: proc(s: string) -> (string, bool) {
 	if len(s) > 1 && s[len(s) - 1] == ':' {
 		// Yes, this ends in a colon and is a key
 		return s[:len(s) - 1], true
@@ -80,7 +80,7 @@ parse_meminfo :: proc(meminfo: string) -> (map[string]f64, bool) {
 	last_key := ""
 
 	for len(s) > 0 {
-		key, key_ok := get_key(s[0])
+		key, key_ok := __get_key(s[0])
 		if !key_ok {
 			// Must've been a suffix, so let's multiply the last value
 			switch key {
