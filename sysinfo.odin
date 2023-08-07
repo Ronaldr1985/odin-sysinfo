@@ -56,7 +56,10 @@ __read_entire_file_from_handle :: proc(fd: os.Handle, allocator := context.alloc
 get_hostname :: proc() -> (string, bool) {
 	data, ok := __read_entire_file_from_filename("/proc/sys/kernel/hostname")
 
-	return string(data), ok
+	hostname: string
+	hostname, ok = strings.remove_all(string(data), "\n")
+
+	return hostname, ok
 }
 
 get_key :: proc(s: string) -> (string, bool) {
