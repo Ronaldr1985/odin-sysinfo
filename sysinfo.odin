@@ -144,6 +144,25 @@ parse_cpuinfo :: proc(cpuinfo: string) -> (map[string]string, bool) {
 	return values, true
 }
 
+// FIXME: This is a bodge
+get_cpu_name_and_socket_number :: proc() -> (string, int, bool) {
+	cpuinfo_bytes: []byte
+	ok: bool
+
+	if cpuinfo_bytes, ok = __read_entire_file_from_filename("/proc/cpuinfo"); !ok {
+		return "", 0, false
+	}
+	defer delete(cpuinfo_bytes)
+
+	cpuinfo_map, parse_cpuinfo_ok := parse_cpuinfo(string(cpuinfo_bytes))
+	if !parse_cpuinfo_ok {
+		return "", 0, false
+	}
+	defer delete(cpuinfo_map)
+
+	return cpuinfo_map["model name"], strconv.atoi(cpuinfo_map["physical id"]), true
+}
+
 get_cpu_name :: proc() -> (string, bool) {
 	cpuinfo_bytes: []byte
 	ok: bool
