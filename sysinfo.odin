@@ -144,6 +144,26 @@ parse_cpuinfo :: proc(cpuinfo: string) -> (map[string]string, bool) {
 	return values, true
 }
 
+get_cpu_name :: proc() -> (string, bool) {
+	cpuinfo_bytes: []byte
+	ok: bool
+
+	if cpuinfo_bytes, ok = __read_entire_file_from_filename("/proc/cpuinfo"); !ok {
+		fmt.fprintln(os.stderr, "Failed to open file, cpuinfo")
+		os.exit(1)
+	}
+	defer delete(cpuinfo_bytes)
+
+	cpuinfo_map, parse_cpuinfo_ok := parse_cpuinfo(string(cpuinfo_bytes))
+	if !parse_cpuinfo_ok {
+		fmt.fprintln(os.stderr, "Issue whilst parsing data from cpuinfo")
+		os.exit(1)
+	}
+	defer delete(cpuinfo_map)
+
+	return cpuinfo_map["model name"], true
+}
+
 get_numb_cpu_cores :: proc() -> (int, bool) {
 	data, ok := __read_entire_file_from_filename("/proc/cpuinfo")
 	if !ok {
@@ -223,26 +243,6 @@ get_total_physical_memory_bytes :: proc() -> (total_physical_memory: f64, ok: bo
 	total_physical_memory = meminfo_map["MemTotal"]
 
 	return
-}
-
-get_cpu_name :: proc() -> (string, bool) {
-	cpuinfo_bytes: []byte
-	ok: bool
-
-	if cpuinfo_bytes, ok = __read_entire_file_from_filename("/proc/cpuinfo"); !ok {
-		fmt.fprintln(os.stderr, "Failed to open file, cpuinfo")
-		os.exit(1)
-	}
-	defer delete(cpuinfo_bytes)
-
-	cpuinfo_map, parse_cpuinfo_ok := parse_cpuinfo(string(cpuinfo_bytes))
-	if !parse_cpuinfo_ok {
-		fmt.fprintln(os.stderr, "Issue whilst parsing data from cpuinfo")
-		os.exit(1)
-	}
-	defer delete(cpuinfo_map)
-
-	return cpuinfo_map["model name"], true
 }
 
 get_mountpoint_total_gb :: proc(mountpoint: string) -> f64 {
