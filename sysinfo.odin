@@ -222,7 +222,7 @@ get_cpu_usage_perc :: proc() -> (f64, bool) {
 		}
 	}
 
-	time.sleep(time.Second * 1)
+	time.sleep(time.Millisecond * 200)
 
 	i = 0
 	data, ok = __read_entire_file_from_filename("/proc/stat")
