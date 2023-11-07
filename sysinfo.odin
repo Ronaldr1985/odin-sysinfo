@@ -6,9 +6,11 @@ import "core:io"
 import "core:os"
 import "core:strconv"
 import "core:strings"
+import "core:runtime"
 import "core:time"
 import "core:unicode"
 
+@(private)
 __read_entire_file_from_filename :: proc(name: string, allocator := context.allocator) -> ([]byte, bool) {
 	context.allocator = allocator
 
@@ -21,12 +23,12 @@ __read_entire_file_from_filename :: proc(name: string, allocator := context.allo
 	return __read_entire_file_from_handle(fd, allocator)
 }
 
+@(private)
 __read_entire_file_from_handle :: proc(fd: os.Handle, allocator := context.allocator) -> ([]byte, bool) {
 	context.allocator = allocator
 
 	length: i64
 	err: os.Errno
-
 	if length, err = os.file_size(fd); err != 0 {
 	    return nil, false
 	}
@@ -62,6 +64,7 @@ get_hostname :: proc() -> (string, bool) {
 	return hostname, ok
 }
 
+@(private)
 __get_key :: proc(s: string) -> (string, bool) {
 	if len(s) > 1 && s[len(s) - 1] == ':' {
 		// Yes, this ends in a colon and is a key
@@ -131,6 +134,8 @@ get_ram_usage_perc :: proc() -> (f64, bool) {
 	return 100 * (((total - free) - (buffers + cached)) / total), true
 }
 
+
+@(private)
 parse_cpuinfo :: proc(cpuinfo: string) -> (map[string]string, bool) {
 	cpuinfo_string: string = cpuinfo
     values: map[string]string
