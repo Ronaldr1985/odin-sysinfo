@@ -52,16 +52,8 @@ __read_entire_file_from_handle :: proc(fd: os.Handle, allocator := context.alloc
 		bytes_total += bytes_read
 		resize(&_data, bytes_total + BLOCK_SIZE)
 	}
+
 	return _data[:bytes_total], true
-}
-
-get_hostname :: proc() -> (string, bool) {
-	data, ok := __read_entire_file_from_filename("/proc/sys/kernel/hostname")
-
-	hostname: string
-	hostname, ok = strings.remove_all(string(data), "\n")
-
-	return hostname, ok
 }
 
 @(private)
@@ -134,6 +126,14 @@ get_ram_usage_perc :: proc() -> (f64, bool) {
 	return 100 * (((total - free) - (buffers + cached)) / total), true
 }
 
+get_hostname :: proc() -> (string, bool) {
+	data, ok := __read_entire_file_from_filename("/proc/sys/kernel/hostname")
+
+	hostname: string
+	hostname, ok = strings.remove_all(string(data), "\n")
+
+	return hostname, ok
+}
 
 @(private)
 parse_cpuinfo :: proc(cpuinfo: string) -> (map[string]string, bool) {
