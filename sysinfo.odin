@@ -309,3 +309,50 @@ get_mountpoint_available_perc :: proc(mountpoint: string) -> f64 {
 get_mountpoint_used_perc :: proc(mountpoint: string) -> f64 {
 	return (get_mountpoint_used_gb(mountpoint)/get_mountpoint_total_gb(mountpoint)) * 100
 }
+
+@(private)
+__parse_partitions :: proc(partitions: string) -> (map[string]Partition, bool) {
+	err: runtime.Allocator_Error
+	fields: []string
+	ok: bool
+	partition: Partition
+    values: map[string]Partition
+	partitions_string := partitions
+
+	for line in strings.split_lines_iterator(&partitions_string) {
+		if len(line) > 0 && !strings.contains(line, "major") {
+			fields = strings.fields(line)
+			defer delete(fields)
+
+			partition.major = strconv.atoi(fields[0])
+			partition.minor = strconv.atoi(fields[1])
+			partition.blocks, ok = strconv.parse_f64(fields[2])
+			if !ok {
+				return nil, false
+			}
+			partition.name = fields[3]
+
+			values[fields[3]] = partition
+		}
+	}
+
+	return values, true
+}
+
+get_disk_size_bytes :: proc(disk_name: string) -> (f64, bool) {
+	partitions_bytes: []byte
+	ok: bool
+
+	if partitions_bytes, ok = __read_entire_file_from_filename("/proc/partitions"); !ok {
+		return 0, false
+	}
+	defer delete(partitions_bytes)
+
+	partitions_map, parse_partitions_ok := __parse_partitions(string(partitions_bytes))
+	if !parse_partitions_ok {
+		return 0, false
+	}
+	defer delete(partitions_map)
+
+	return partitions_map[disk_name].blocks / 1024, true
+}
