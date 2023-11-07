@@ -356,3 +356,23 @@ get_disk_size_bytes :: proc(disk_name: string) -> (f64, bool) {
 
 	return partitions_map[disk_name].blocks / 1024, true
 }
+
+get_system_uptime_in_seconds :: proc() -> (int, bool) {
+	fd, err := os.open("/proc/uptime")
+	if err != os.ERROR_NONE {
+		return 0, false
+	}
+
+	buf: [24]u8
+	_, err = os.read_full(fd, buf[0:])
+	if err != os.ERROR_NONE {
+		return 0, false
+	}
+
+	fields := strings.fields(string(buf[:]))
+	defer delete(fields)
+
+	uptime_seconds := strconv.atoi(fields[0])
+
+	return uptime_seconds, true
+}
