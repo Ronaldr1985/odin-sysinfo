@@ -19,3 +19,18 @@ Sys_statvfs :: struct {
 
 	__f_spare:  [6]c.int
 }
+
+Partition :: struct {
+	major: int,
+	minor: int,
+	blocks: f64,
+	name: string
+}
+
+Process :: struct {
+	name: string,
+	command: string,
+	pid: int,
+	cpu_usage: int,
+	memory_usage: int,
+}
