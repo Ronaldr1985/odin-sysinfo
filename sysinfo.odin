@@ -376,3 +376,122 @@ get_system_uptime_in_seconds :: proc() -> (int, bool) {
 
 	return uptime_seconds, true
 }
+
+get_total_number_of_processes :: proc () -> (int) {
+	fd, open_err := os.open("/proc")
+	if open_err != 0 {
+		return 0
+	}
+	defer os.close(fd)
+
+	files, err := os.read_dir(fd, -1)
+	if err != 0 {
+		return 0
+	}
+	defer os.file_info_slice_delete(files)
+
+	number_of_processes := 0
+	for file in files {
+		if file.is_dir && strconv.atoi(file.name) != 0 {
+			number_of_processes += 1
+		}
+	}
+
+	return number_of_processes
+}
+
+// https://www.baeldung.com/linux/total-process-cpu-usage
+get_process_details :: proc(pid: int) -> (Process, bool) {
+	process: Process
+
+	process.pid = pid
+
+	buf: [256]u8
+	filename := fmt.tprintf("/proc/%d/comm", pid)
+	fd, err := os.open(filename)
+	if err != os.ERROR_NONE {
+		return {}, false
+	}
+	_, err = os.read_full(fd, buf[0:])
+	if err != os.ERROR_NONE {
+		return {}, false
+	}
+	temp := string(buf[:])[:strings.index(string(buf[:]), "\n")]
+	process.name = strings.clone(temp)
+
+	filename = fmt.tprintf("/proc/%d/cmdline", pid)
+	fd, err = os.open(filename)
+	if err != os.ERROR_NONE {
+		return {}, false
+	}
+	_, err = os.read_full(fd, buf[0:])
+	if err != os.ERROR_NONE {
+		return {}, false
+	}
+	process.command = strings.clone(string(buf[:]))
+
+	// filename = fmt.tprintf("/proc/%d/stat", pid)
+	// fd, err = os.open(filename)
+	// if err != os.ERROR_NONE {
+	// 	return {}, false
+	// }
+	// _, err = os.read_full(fd, buf[0:])
+	// if err != os.ERROR_NONE {
+	// 	return {}, false
+	// }
+
+	// fields := strings.fields(string(buf))
+
+	// utime := strconv.atoi(fields[13])
+	// stime := strconv.atoi(fields[14])
+	// process_start_time := strconv.atoi(fields[21])
+
+	return process, true
+}
+
+get_processes :: proc() -> ([]Process, bool) {
+	fd, open_err := os.open("/proc")
+	if open_err != 0 {
+		return nil, false
+	}
+	defer os.close(fd)
+
+	files, err := os.read_dir(fd, -1)
+	if err != 0 {
+		return nil, false
+	}
+	defer os.file_info_slice_delete(files)
+
+	processes: [dynamic]Process
+	process: Process
+	ok: bool
+	current_process := 0
+	for file in files {
+		if file.is_dir && strconv.atoi(file.name) != 0 {
+			process, ok = get_process_details(strconv.atoi(file.name))
+			if !ok {
+				delete(processes)
+				return nil, false
+			}
+
+			append(&processes, process)
+
+			current_process += 1
+		}
+	}
+
+	return processes[:], true
+}
+
+process_delete :: proc(process: Process, allocator := context.allocator) {
+	delete(process.name)
+	delete(process.command)
+}
+
+process_slice_delete :: proc(processes: []Process, allocator := context.allocator) {
+	for process in processes {
+		process_delete(process, allocator)
+	}
+
+	delete(processes, allocator)
+}
