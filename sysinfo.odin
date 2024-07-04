@@ -1,12 +1,12 @@
 package sysinfo
 
+import "base:runtime"
 import "core:bufio"
 import "core:fmt"
 import "core:io"
 import "core:os"
 import "core:strconv"
 import "core:strings"
-import "core:runtime"
 import "core:time"
 import "core:unicode"
 
