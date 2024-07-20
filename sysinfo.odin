@@ -131,6 +131,7 @@ get_hostname :: proc() -> Maybe(string) {
 	if !ok {
 		return nil
 	}
+	defer delete(data)
 
 	hostname, str_ok := strings.remove_all(string(data), "\n")
 	if !ok {
