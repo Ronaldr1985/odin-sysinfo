@@ -127,19 +127,20 @@ get_ram_usage_perc :: proc() -> (f64, bool) {
 	return 100 * (((total - free) - (buffers + cached)) / total), true
 }
 
-get_hostname :: proc() -> Maybe(string) {
-	data, ok := __read_entire_file_from_filename("/proc/sys/kernel/hostname")
+get_hostname :: proc() -> (hostname: string, ok: bool) #optional_ok {
+	data: []u8
+	data, ok = __read_entire_file_from_filename("/proc/sys/kernel/hostname")
 	if !ok {
-		return nil
+		return
 	}
 	defer delete(data)
 
-	hostname, str_ok := strings.remove_all(string(data), "\n")
+	hostname, ok = strings.remove_all(string(data), "\n")
 	if !ok {
-		return nil
+		return
 	}
 
-	return hostname
+	return
 }
 
 @(private)
