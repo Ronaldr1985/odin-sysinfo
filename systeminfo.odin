@@ -1,4 +1,4 @@
-package sysinfo
+package systeminfo
 
 import "base:runtime"
 import "core:bufio"
@@ -9,6 +9,7 @@ import "core:strconv"
 import "core:strings"
 import "core:time"
 import "core:unicode"
+import c "core:c/libc"
 
 @(private)
 __read_entire_file_from_filename :: proc(name: string, allocator := context.allocator) -> ([]byte, bool) {
@@ -232,6 +233,8 @@ get_cpu_usage_perc :: proc() -> (f64, bool) {
 			i += 1
 		}
 	}
+	delete(fields)
+	delete(data)
 
 	time.sleep(time.Millisecond * 200)
 
@@ -241,6 +244,7 @@ get_cpu_usage_perc :: proc() -> (f64, bool) {
 		fmt.fprintln(os.stderr, "Issue whilst passing /proc/stat")
 		return 0, false
 	}
+
 	data_str = string(data)
 
 	fields = strings.fields(data_str[:strings.index(data_str, "\n")])
@@ -250,6 +254,8 @@ get_cpu_usage_perc :: proc() -> (f64, bool) {
 			i += 1
 		}
 	}
+	delete(fields)
+	delete(data)
 
 	return (100 * ((b[0]+b[1]+b[2]) - (a[0]+a[1]+a[2])) / ((b[0]+b[1]+b[2]+b[3]) - (a[0]+a[1]+a[2]+a[3]))), true
 }
@@ -424,10 +430,13 @@ get_process_details :: proc(pid: int) -> (Process, bool) {
 	}
 	temp := string(buf[:])[:strings.index(string(buf[:]), "\n")]
 	process.name = strings.clone(temp)
+	os.close(fd)
 
 	filename = fmt.tprintf("/proc/%d/cmdline", pid)
 	fd, err = os.open(filename)
 	if err != os.ERROR_NONE {
+		fmt.println(err)
+
 		return {}, false
 	}
 	_, err = os.read_full(fd, buf[0:])
@@ -435,23 +444,36 @@ get_process_details :: proc(pid: int) -> (Process, bool) {
 		return {}, false
 	}
 	process.command = strings.clone(string(buf[:]))
+	os.close(fd)
 
-	// filename = fmt.tprintf("/proc/%d/stat", pid)
-	// fd, err = os.open(filename)
-	// if err != os.ERROR_NONE {
-	// 	return {}, false
-	// }
-	// _, err = os.read_full(fd, buf[0:])
-	// if err != os.ERROR_NONE {
-	// 	return {}, false
-	// }
+	filename = fmt.tprintf("/proc/%d/stat", pid)
+	fd, err = os.open(filename)
+	if err != os.ERROR_NONE {
+		delete(process.name)
+		delete(process.command)
+		return {}, false
+	}
+	_, err = os.read_full(fd, buf[0:])
+	if err != os.ERROR_NONE {
+		delete(process.name)
+		delete(process.command)
+		return {}, false
+	}
+	os.close(fd)
 
-	// fields := strings.fields(string(buf))
+	fields := strings.fields(string(buf[:]))
+	defer delete(fields)
 
-	// utime := strconv.atoi(fields[13])
-	// stime := strconv.atoi(fields[14])
-	// process_start_time := strconv.atoi(fields[21])
-
+	utime := strconv.atoi(fields[13])
+	stime := strconv.atoi(fields[14])
+	process_start_time := strconv.atoi(fields[21])
+	uptime, ok := get_system_uptime_in_seconds()
+	if !ok {
+		delete(process.name)
+		delete(process.command)
+		return {}, false
+	}
+	elapsed_time := uptime
 	return process, true
 }
 
@@ -471,7 +493,6 @@ get_processes :: proc() -> ([]Process, bool) {
 	processes: [dynamic]Process
 	process: Process
 	ok: bool
-	current_process := 0
 	for file in files {
 		if file.is_dir && strconv.atoi(file.name) != 0 {
 			process, ok = get_process_details(strconv.atoi(file.name))
@@ -481,8 +502,6 @@ get_processes :: proc() -> ([]Process, bool) {
 			}
 
 			append(&processes, process)
-
-			current_process += 1
 		}
 	}
 
@@ -501,3 +520,5 @@ process_slice_delete :: proc(processes: []Process, allocator := context.allocato
 
 	delete(processes, allocator)
 }
+
+// TODO: Use /sys/devices/virtual/nvme-subsystem/nvme-subsys0/model to get models of disks

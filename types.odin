@@ -1,4 +1,4 @@
-package sysinfo
+package systeminfo
 
 import c "core:c/libc"
 
