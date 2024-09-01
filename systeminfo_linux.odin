@@ -224,6 +224,7 @@ get_cpu_usage_perc :: proc() -> (f64, bool) {
 		fmt.fprintln(os.stderr, "Issue whilst passing /proc/stat")
 		return 0, false
 	}
+	defer delete(data)
 
 	data_str := string(data)
 
@@ -245,6 +246,7 @@ get_cpu_usage_perc :: proc() -> (f64, bool) {
 		fmt.fprintln(os.stderr, "Issue whilst passing /proc/stat")
 		return 0, false
 	}
+	defer delete(data)
 
 	data_str = string(data)
 
